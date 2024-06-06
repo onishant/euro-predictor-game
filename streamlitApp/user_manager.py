@@ -2,8 +2,9 @@ import pandas as pd
 import hashlib
 from datetime import datetime
 
+
 class UserManager:
-    def __init__(self, users_file_path=r"..\eventData\users.xlsx", fixtures_file_path=r"..\eventData\fixture list.xlsx"):
+    def __init__(self, users_file_path=r".\eventData\users.xlsx", fixtures_file_path=r".\eventData\fixture list.xlsx"):
         self.users_file_path = users_file_path
         self.fixtures_file_path = fixtures_file_path
 
