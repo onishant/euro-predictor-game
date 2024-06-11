@@ -16,7 +16,7 @@ class DisplayManager:
 
         # Group fixtures by date
         fixtures_by_date = {}
-        for team1, team2, day, date, result in fixtures:
+        for team1, team2, day, date, result_score1, result_score2 in fixtures:
             if date not in fixtures_by_date:
                 fixtures_by_date[date] = []
             fixtures_by_date[date].append((team1, team2))
@@ -26,60 +26,69 @@ class DisplayManager:
             for team1, team2 in matches:
                 match = f"{team1} vs {team2}"
                 match_start_time = self.user_manager.get_match_start_time(match)
-                print(match_start_time)
-                saved_prediction = user_predictions.get(match, "")
+
+                saved_prediction = user_predictions.get(match, {})
 
                 if match_start_time and now >= match_start_time:
                     st.text(f"Match {match} has already started. Prediction locked: {saved_prediction}")
                     continue
 
-                prediction = st.selectbox(
-                    f"{team1} vs {team2}",
-                    (team1, team2, "Draw"),
-                    index=(0 if saved_prediction == team1 else (1 if saved_prediction == team2 else 2)),
-                    key=f"{team1}_vs_{team2}_pred"
-                )
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    result = st.selectbox(f"Result for {team1} vs {team2}", [team1, team2, "Draw"], key=f"{team1}_{team2}_result", index=["Draw", team1, team2].index(saved_prediction.get('result', "Draw")))
+                with col2:
+                    score1 = st.number_input(f"{team1} score", min_value=0, value=saved_prediction.get('score1', 0), key=f"{team1}_{team2}_score1")
+                with col3:
+                    score2 = st.number_input(f"{team2} score", min_value=0, value=saved_prediction.get('score2', 0), key=f"{team1}_{team2}_score2")
 
                 if st.button(f"Submit Prediction for {team1} vs {team2}"):
-                    self.user_manager.save_user_prediction(username, match, prediction)
-                    st.success(f"Prediction for {team1} vs {team2} submitted: {prediction}")
+                    score1 = int(score1)  # Ensure score1 is an integer
+                    score2 = int(score2)  # Ensure score2 is an integer
+
+                    if (result == team1 and score1 <= score2) or (result == team2 and score2 <= score1) or (result == "Draw" and score1 != score2):
+                        st.warning("Inconsistent prediction: the winner must have more goals than the loser, and a draw must have equal scores.")
+                    else:
+                        self.user_manager.save_user_prediction(username, match, result, score1, score2)
+                        st.success(f"Prediction for {team1} vs {team2} submitted: {result} {team1} {score1} - {score2} {team2}")
 
     def submit_results_page(self, fixtures):
         st.subheader("Submit Match Results")
-        for team1, team2, day, date, _ in fixtures:
+        for team1, team2, day, date, _1, _2 in fixtures:
             match = f"{team1} vs {team2}"
-            result = st.selectbox(f"Match Result: {match}", (team1, team2, "Draw"), key=f"result_{match}")
-            if st.button(f"Submit Result for {match}"):
-                st.session_state["results"][match] = result
-                self.user_manager.save_match_result(match, result)
-                st.success(f"Result for {match} submitted")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                score1 = st.number_input(f"{team1} score", min_value=0, key=f"{team1}_{team2}_result_score1")
+            with col2:
+                score2 = st.number_input(f"{team2} score", min_value=0, key=f"{team1}_{team2}_result_score2")
+            with col3:
+                if st.button(f"Submit Result for {team1} vs {team2}"):
+                    score1 = int(score1)  # Ensure score1 is an integer
+                    score2 = int(score2)  # Ensure score2 is an integer
+                    self.user_manager.save_match_result(match, score1, score2)
+                    st.success(f"Result for {team1} vs {team2} submitted: {team1} {score1} - {score2} {team2}")
 
     def display_leaderboard(self):
         st.subheader("Leaderboard")
+        self.user_manager.update_leaderboard()
+        leaderboard = self.user_manager.leaderboard
 
-        # Read user predictions and results from Excel sheets
-        user_predictions = self.user_manager.get_user_predictions()
-        fixtures_and_results = self.user_manager.get_fixtures_and_results()
-
-        leaderboard = {}
-        for team1, team2, day, date, result in fixtures_and_results:
-            match = f"{team1} vs {team2}"
-            if result:
-                for username, predictions in user_predictions.items():
-                    if match in predictions and predictions[match] == result:
-                        if username in leaderboard:
-                            leaderboard[username] += 1
-                        else:
-                            leaderboard[username] = 1
-
-        # Convert leaderboard to a DataFrame and display
-        leaderboard_df = pd.DataFrame(list(leaderboard.items()), columns=["Username", "Points"])
+        leaderboard_data = [{"Username": username, "Points": int(points)} for username, points in leaderboard.items()]
+        leaderboard_df = pd.DataFrame(leaderboard_data)
         leaderboard_df = leaderboard_df.sort_values(by="Points", ascending=False)
         st.table(leaderboard_df)
 
     def display_fixtures_and_results(self):
         st.subheader("Fixtures and Results")
-        fixtures = self.user_manager.get_fixtures_and_results()
-        data = [{"Match": f"{team1} vs {team2}", "Result": result if result else "Pending"} for team1, team2, day, date, result in fixtures]
-        df = pd.DataFrame(data)
-        st.table(df)
+        try:
+            fixtures_df = pd.read_excel(self.user_manager.fixtures_file_path)
+        except FileNotFoundError:
+            st.warning("Fixtures file not found.")
+            return
+
+        def format_score(score):
+            return "NA" if pd.isna(score) else int(score)
+
+        fixtures_df['Home_Score'] = fixtures_df['Home_Score'].apply(format_score)
+        fixtures_df['Away_Score'] = fixtures_df['Away_Score'].apply(format_score)
+
+        st.table(fixtures_df[['Date', 'Home', 'Home_Score', 'Away', 'Away_Score']])
