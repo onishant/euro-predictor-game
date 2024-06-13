@@ -17,7 +17,7 @@ if "results" not in st.session_state:
     st.session_state["results"] = {}
 
 # Page configuration
-st.set_page_config(page_title="Tournament Predictor", layout="centered")
+st.set_page_config(page_title="IN-Euro Predict Game", layout="centered")
 
 # User Authentication
 def user_authentication():
@@ -57,7 +57,7 @@ def logout():
 
 # Main Application
 def main():
-    st.title("Tournament Predictor Game")
+    st.title("IN-Euro Predict Game")
     if "logged_in" not in st.session_state:
         st.session_state["logged_in"] = False
 
