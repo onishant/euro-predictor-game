@@ -23,7 +23,7 @@ class DisplayManager:
             fixtures_by_date[date].append((team1, team2))
 
         for date, matches in fixtures_by_date.items():
-            st.markdown(f"### Matches on {day} {date.strftime('%d %b')}")
+            st.markdown(f"### Matches on {date.strftime('%d %b')}")
             for team1, team2 in matches:
                 match = f"{team1} vs {team2}"
                 match_start_time = self.user_manager.get_match_start_time(match)
