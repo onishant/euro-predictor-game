@@ -67,7 +67,7 @@ def main():
         fixtures = display_manager.user_manager.get_fixtures_and_results()
         username = st.session_state["username"]
         if username == "admin":
-            menu = ["Submit Results", "Leaderboard", "Fixtures and Results", "Logout"]
+            menu = ["Submit Results", "Leaderboard", "Fixtures and Results", "Export Data", "Logout"]
         else:
             menu = ["Your Predictions", "Leaderboard", "Fixtures and Results", "Logout"]
         choice = st.sidebar.selectbox("Menu", menu, key="logged_in_menu")
@@ -80,6 +80,8 @@ def main():
             display_manager.display_leaderboard()
         elif choice == "Fixtures and Results":
             display_manager.display_fixtures_and_results()
+        elif choice == "Export Data":
+            display_manager.export_files()
         elif choice == "Logout":
             logout()
 

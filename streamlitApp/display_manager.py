@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import io
 
 class DisplayManager:
     def __init__(self, user_manager):
@@ -92,3 +93,32 @@ class DisplayManager:
         fixtures_df['Away_Score'] = fixtures_df['Away_Score'].apply(format_score)
 
         st.table(fixtures_df[['Date', 'Home', 'Home_Score', 'Away', 'Away_Score']])
+
+    def export_files(self):
+        st.subheader("Export Data Files")
+
+        def convert_df_to_excel(df):
+            output = io.BytesIO()
+            writer = pd.ExcelWriter(output, engine='openpyxl')
+            df.to_excel(writer, index=False)
+            writer.close()
+            processed_data = output.getvalue()
+            return processed_data
+
+        # Export users file
+        users_df = pd.read_excel(self.user_manager.users_file_path)
+        st.download_button(
+            label="Export Users Data",
+            data=convert_df_to_excel(users_df),
+            file_name='users.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+        # Export fixtures file
+        fixtures_df = pd.read_excel(self.user_manager.fixtures_file_path)
+        st.download_button(
+            label="Export Fixtures Data",
+            data=convert_df_to_excel(fixtures_df),
+            file_name='fixture list.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
