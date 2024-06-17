@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
+import pytz
 
 class DisplayManager:
     def __init__(self, user_manager):
@@ -11,7 +12,9 @@ class DisplayManager:
         st.subheader("Enter Your Predictions")
         username = st.session_state["username"]
         now = datetime.now()
-        print(now)
+        # print("now", now)
+        now_germany = now + timedelta(hours=2)
+        # print("German time", now_germany)
         # Retrieve existing predictions for the current user
         user_predictions = self.user_manager.get_user_predictions().get(username, {})
 
@@ -27,11 +30,13 @@ class DisplayManager:
             for team1, team2 in matches:
                 match = f"{team1} vs {team2}"
                 match_start_time = self.user_manager.get_match_start_time(match)
+                # print(match_start_time)
 
                 saved_prediction = user_predictions.get(match, {})
                 
-                if match_start_time and now >= match_start_time:
+                if match_start_time and now_germany >= match_start_time:
                     st.text(f"Match {match} has already started. Prediction locked: {saved_prediction}")
+                    
                     continue
 
                 col1, col2, col3 = st.columns(3)
