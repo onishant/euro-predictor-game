@@ -11,7 +11,7 @@ class DisplayManager:
         st.subheader("Enter Your Predictions")
         username = st.session_state["username"]
         now = datetime.now()
-
+        print(now)
         # Retrieve existing predictions for the current user
         user_predictions = self.user_manager.get_user_predictions().get(username, {})
 
@@ -29,7 +29,7 @@ class DisplayManager:
                 match_start_time = self.user_manager.get_match_start_time(match)
 
                 saved_prediction = user_predictions.get(match, {})
-
+                
                 if match_start_time and now >= match_start_time:
                     st.text(f"Match {match} has already started. Prediction locked: {saved_prediction}")
                     continue
