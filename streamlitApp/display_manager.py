@@ -47,6 +47,8 @@ class DisplayManager:
                 with col3:
                     score2 = st.number_input(f"{team2} score", min_value=0, value=saved_prediction.get('score2', 0), key=f"{team1}_{team2}_score2")
 
+                st.markdown(f"**Current Prediction**: {saved_prediction.get('result', 'N/A')} {saved_prediction.get('score1', 'N/A')} - {saved_prediction.get('score2', 'N/A')}")
+
                 if st.button(f"Submit Prediction for {team1} vs {team2}"):
                     score1 = int(score1)  # Ensure score1 is an integer
                     score2 = int(score2)  # Ensure score2 is an integer
