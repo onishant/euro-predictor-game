@@ -82,8 +82,23 @@ class DisplayManager:
 
         leaderboard_data = [{"Username": username, "Points": int(points)} for username, points in leaderboard.items()]
         leaderboard_df = pd.DataFrame(leaderboard_data)
-        leaderboard_df = leaderboard_df.sort_values(by="Points", ascending=False)
-        st.table(leaderboard_df)
+        leaderboard_df = leaderboard_df.sort_values(by="Points", ascending=False).reset_index(drop=True)
+
+        # Add ranking column
+        leaderboard_df.insert(0, 'Rank', leaderboard_df.index + 1)
+
+        # Highlight the top three positions
+        def highlight_top_three(row):
+            if row.name == 0:  # First row
+                return ['background-color: gold'] * len(row)
+            elif row.name == 1:  # Second row
+                return ['background-color: silver'] * len(row)
+            elif row.name == 2:  # Third row
+                return ['background-color: #cd7f32'] * len(row)  # Bronze color
+            else:
+                return [''] * len(row)
+
+        st.dataframe(leaderboard_df.style.apply(highlight_top_three, axis=1))
 
     def display_fixtures_and_results(self):
         st.subheader("Fixtures and Results")
