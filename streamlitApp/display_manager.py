@@ -18,46 +18,77 @@ class DisplayManager:
         # Retrieve existing predictions for the current user
         user_predictions = self.user_manager.get_user_predictions().get(username, {})
 
-        # Group fixtures by date
-        fixtures_by_date = {}
-        for team1, team2, day, date, result_score1, result_score2 in fixtures:
-            if date not in fixtures_by_date:
-                fixtures_by_date[date] = []
-            fixtures_by_date[date].append((team1, team2))
+        # Separately display old and upcoming matches
+        old_matches_by_date = {}
+        upcoming_matches_by_date = {}
 
-        for date, matches in fixtures_by_date.items():
-            st.markdown(f"### Matches on {date.strftime('%d %b')}")
-            for team1, team2 in matches:
-                match = f"{team1} vs {team2}"
-                match_start_time = self.user_manager.get_match_start_time(match)
-                # print(match_start_time)
+        # Separate fixtures into old matches and upcoming matches, grouped by date
+        for team1, team2, day, datetime_obj, _1, _2 in fixtures:
+            match_date = datetime_obj.date()
+            # print(match_date, now.date())
+            match = (team1, team2, day, datetime_obj)
+            if match_date < now.date():
+                if match_date not in old_matches_by_date:
+                    old_matches_by_date[match_date] = []
+                old_matches_by_date[match_date].append(match)
+            else:
+                if match_date not in upcoming_matches_by_date:
+                    upcoming_matches_by_date[match_date] = []
+                upcoming_matches_by_date[match_date].append(match)
 
-                saved_prediction = user_predictions.get(match, {})
-                
-                if match_start_time and now_germany >= match_start_time:
-                    st.text(f"Match {match} has already started. Prediction locked: {saved_prediction}")
+        # Display old matches in a dropdown
+        if old_matches_by_date:
+            with st.expander("Old Matches"):
+                for date in sorted(old_matches_by_date.keys()):
+                    st.markdown(f"### Matches on {date.strftime('%d %b %Y')}")
+                    for team1, team2, day, _ in old_matches_by_date[date]:
+                        match = f"{team1} vs {team2}"
+                        match_start_time = self.user_manager.get_match_start_time(match)
+
+                        saved_prediction = user_predictions.get(match, {})
+                        
+                        if match_start_time and now_germany >= match_start_time:
+                            st.text(f"Match {match} has already started. Prediction locked: {saved_prediction}")
+                        
+                            continue
+        
+        # Display upcoming matches
+        if upcoming_matches_by_date:
+            st.markdown("### Upcoming Matches")
+            for date in sorted(upcoming_matches_by_date.keys()):
+                print(upcoming_matches_by_date)
+                st.markdown(f"### Matches on {date.strftime('%d %b %Y')}")
+                for team1, team2, day, _ in upcoming_matches_by_date[date]:
+                    match = f"{team1} vs {team2}"
+
+                    match_start_time = self.user_manager.get_match_start_time(match)
+
+                    saved_prediction = user_predictions.get(match, {})
                     
-                    continue
+                    if match_start_time and now_germany >= match_start_time:
+                        st.text(f"Match {match} has already started. Prediction locked: {saved_prediction}")
+                    
+                        continue
 
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    result = st.selectbox(f"Result for {team1} vs {team2}", [team1, team2, "Draw"], key=f"{team1}_{team2}_result", index=["Draw", team1, team2].index(saved_prediction.get('result', "Draw")))
-                with col2:
-                    score1 = st.number_input(f"{team1} score", min_value=0, value=saved_prediction.get('score1', 0), key=f"{team1}_{team2}_score1")
-                with col3:
-                    score2 = st.number_input(f"{team2} score", min_value=0, value=saved_prediction.get('score2', 0), key=f"{team1}_{team2}_score2")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        result = st.selectbox(f"Result for {team1} vs {team2}", [team1, team2, "Draw"], key=f"{team1}_{team2}_result", index=["Draw", team1, team2].index(saved_prediction.get('result', "Draw")))
+                    with col2:
+                        score1 = st.number_input(f"{team1} score", min_value=0, value=saved_prediction.get('score1', 0), key=f"{team1}_{team2}_score1")
+                    with col3:
+                        score2 = st.number_input(f"{team2} score", min_value=0, value=saved_prediction.get('score2', 0), key=f"{team1}_{team2}_score2")
+                    st.markdown(f"**Current Prediction**: {saved_prediction.get('result', 'N/A')} {saved_prediction.get('score1', 'N/A')} - {saved_prediction.get('score2', 'N/A')}")
 
-                st.markdown(f"**Current Prediction**: {saved_prediction.get('result', 'N/A')} {saved_prediction.get('score1', 'N/A')} - {saved_prediction.get('score2', 'N/A')}")
+                    if st.button(f"Submit Result for {team1} vs {team2}"):
+                        score1 = int(score1)  # Ensure score1 is an integer
+                        score2 = int(score2)  # Ensure score2 is an integer
 
-                if st.button(f"Submit Prediction for {team1} vs {team2}"):
-                    score1 = int(score1)  # Ensure score1 is an integer
-                    score2 = int(score2)  # Ensure score2 is an integer
+                        if (result == team1 and score1 <= score2) or (result == team2 and score2 <= score1) or (result == "Draw" and score1 != score2):
+                            st.warning("Inconsistent prediction: the winner must have more goals than the loser, and a draw must have equal scores.")
+                        else:
+                            self.user_manager.save_user_prediction(username, match, result, score1, score2)
+                            st.success(f"Prediction for {team1} vs {team2} submitted: {result} {team1} {score1} - {score2} {team2}")
 
-                    if (result == team1 and score1 <= score2) or (result == team2 and score2 <= score1) or (result == "Draw" and score1 != score2):
-                        st.warning("Inconsistent prediction: the winner must have more goals than the loser, and a draw must have equal scores.")
-                    else:
-                        self.user_manager.save_user_prediction(username, match, result, score1, score2)
-                        st.success(f"Prediction for {team1} vs {team2} submitted: {result} {team1} {score1} - {score2} {team2}")
 
     def submit_results_page(self, fixtures):
         st.subheader("Submit Match Results")
